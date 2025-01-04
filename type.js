@@ -145,7 +145,7 @@ async function getUrlIdFromDatabase(url) {
 // Function to get URLs from the 'udemy' table
 async function getUrlsFromDatabase() {
   return new Promise((resolve, reject) => {
-    const query = "SELECT url FROM udemy WHERE expired IS NOT NULL"; // Updated condition
+    const query = "SELECT url FROM udemy WHERE expired != 'expired'"; // Updated condition
     connection.query(query, (err, results) => {
       if (err) {
         reject(err);
