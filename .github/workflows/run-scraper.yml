@@ -1,22 +1,27 @@
+name: Run Web Scraper
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Runs every hour
+  workflow_dispatch:  # Allows manual triggering
+
 jobs:
-  run-script:
+  run-scraper:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
-          node-version: "16"
+          node-version: 18
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgbm-dev
-          npm install
+        run: npm install
 
-      - name: Run script
+      - name: Run scraper
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
