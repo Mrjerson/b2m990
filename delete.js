@@ -24,21 +24,70 @@ db.connect((err) => {
 // Function to delete rows where the `expired` column is NULL
 async function deleteNullExpiredRows() {
   return new Promise((resolve, reject) => {
-    // Define the query to delete rows where the `expired` column is NULL
-    const query = "DELETE FROM udemy WHERE expired IS NULL";
+    // Step 1: Delete related rows from `UDEMYurl_types`
+    const deleteUrlTypesQuery = `
+      DELETE UDEMYurl_types
+      FROM UDEMYurl_types
+      INNER JOIN udemy ON UDEMYurl_types.url_id = udemy.id
+      WHERE udemy.expired IS NULL;
+    `;
 
-    db.query(query, (err, results) => {
+    db.query(deleteUrlTypesQuery, (err, results) => {
       if (err) {
         console.error(
-          "Error deleting rows with NULL expired value:",
+          "Error deleting rows from UDEMYurl_types with NULL expired value:",
           err.message
         );
         reject(err);
       } else {
         console.log(
-          `Deleted ${results.affectedRows} rows with NULL expired value.`
+          `Deleted ${results.affectedRows} rows from UDEMYurl_types with NULL expired value.`
         );
-        resolve(results);
+
+        // Step 2: Delete related rows from `UDEMYtypes`
+        const deleteTypesQuery = `
+          DELETE UDEMYtypes
+          FROM UDEMYtypes
+          INNER JOIN UDEMYurl_types ON UDEMYtypes.type_id = UDEMYurl_types.type_id
+          WHERE UDEMYurl_types.url_id IN (
+            SELECT id FROM udemy WHERE expired IS NULL
+          );
+        `;
+
+        db.query(deleteTypesQuery, (err, results) => {
+          if (err) {
+            console.error(
+              "Error deleting rows from UDEMYtypes with NULL expired value:",
+              err.message
+            );
+            reject(err);
+          } else {
+            console.log(
+              `Deleted ${results.affectedRows} rows from UDEMYtypes with NULL expired value.`
+            );
+
+            // Step 3: Delete rows from `udemy`
+            const deleteUdemyQuery = `
+              DELETE FROM udemy
+              WHERE expired IS NULL;
+            `;
+
+            db.query(deleteUdemyQuery, (err, results) => {
+              if (err) {
+                console.error(
+                  "Error deleting rows from udemy with NULL expired value:",
+                  err.message
+                );
+                reject(err);
+              } else {
+                console.log(
+                  `Deleted ${results.affectedRows} rows from udemy with NULL expired value.`
+                );
+                resolve(results);
+              }
+            });
+          }
+        });
       }
     });
   });
