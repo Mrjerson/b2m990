@@ -76,7 +76,10 @@ async function checkType(type_name) {
 
 // Function to extract categories from a single URL and save to database
 async function extractCategoriesAndSave(url) {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+  headless: true,
+  args: ['--no-sandbox', '--disable-setuid-sandbox'] // Add these arguments
+});
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "networkidle0", timeout: 0 });
 
