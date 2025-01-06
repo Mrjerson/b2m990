@@ -28,7 +28,10 @@ connection.connect((err) => {
 
 // Function to extract price and discount from a URL
 async function extractPriceSpanAndDiscount(url) {
-  const browser = await puppeteer.launch({ headless: true }); // Launch a headless browser
+  const browser = await puppeteer.launch({
+  headless: true,
+  args: ['--no-sandbox', '--disable-setuid-sandbox'] // Add these arguments
+});
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "networkidle0", timeout: 0 }); // Increase timeout for Cloudflare
 
