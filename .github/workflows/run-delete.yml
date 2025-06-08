@@ -2,7 +2,7 @@ name: Run delete all
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Runs every hour
+    - cron: '0 */12 * * *'  # Runs every 12 hours at minute 0 (12:00 AM and 12:00 PM UTC)
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
