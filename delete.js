@@ -1,109 +1,51 @@
 require("dotenv").config();
-const mysql = require("mysql2");
+const { MongoClient } = require("mongodb");
 
-// Database connection
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+// MongoDB connection setup
+const client = new MongoClient(process.env.MONGO_URI);
+let db;
 
-db.connect((err) => {
-  if (err) {
-    console.error("Error connecting to the database:", err.stack);
-    process.exit(1); // Exit with an error code
+async function connectToMongoDB() {
+  try {
+    await client.connect();
+    db = client.db();
+    console.log("Connected to MongoDB");
+  } catch (error) {
+    console.error("Error connecting to MongoDB:", error);
+    throw error;
   }
-  console.log("Connected to MySQL database.");
-});
+}
 
-// Function to delete rows where the `expired` column is NULL
-async function deleteNullExpiredRows() {
-  return new Promise((resolve, reject) => {
-    // Step 1: Delete related rows from `UDEMYurl_types`
-    const deleteUrlTypesQuery = `
-      DELETE UDEMYurl_types
-      FROM UDEMYurl_types
-      INNER JOIN udemy ON UDEMYurl_types.url_id = udemy.id
-      WHERE udemy.expired IS NULL;
-    `;
-
-    db.query(deleteUrlTypesQuery, (err, results) => {
-      if (err) {
-        console.error(
-          "Error deleting rows from UDEMYurl_types with NULL expired value:",
-          err.message
-        );
-        reject(err);
-      } else {
-        console.log(
-          `Deleted ${results.affectedRows} rows from UDEMYurl_types with NULL expired value.`
-        );
-
-        // Step 2: Delete related rows from `UDEMYtypes`
-        const deleteTypesQuery = `
-          DELETE UDEMYtypes
-          FROM UDEMYtypes
-          INNER JOIN UDEMYurl_types ON UDEMYtypes.type_id = UDEMYurl_types.type_id
-          WHERE UDEMYurl_types.url_id IN (
-            SELECT id FROM udemy WHERE expired IS NULL
-          );
-        `;
-
-        db.query(deleteTypesQuery, (err, results) => {
-          if (err) {
-            console.error(
-              "Error deleting rows from UDEMYtypes with NULL expired value:",
-              err.message
-            );
-            reject(err);
-          } else {
-            console.log(
-              `Deleted ${results.affectedRows} rows from UDEMYtypes with NULL expired value.`
-            );
-
-            // Step 3: Delete rows from `udemy`
-            const deleteUdemyQuery = `
-              DELETE FROM udemy
-              WHERE expired IS NULL;
-            `;
-
-            db.query(deleteUdemyQuery, (err, results) => {
-              if (err) {
-                console.error(
-                  "Error deleting rows from udemy with NULL expired value:",
-                  err.message
-                );
-                reject(err);
-              } else {
-                console.log(
-                  `Deleted ${results.affectedRows} rows from udemy with NULL expired value.`
-                );
-                resolve(results);
-              }
-            });
-          }
-        });
-      }
+// Function to delete documents where the `expired` field is null
+async function deleteNullExpiredDocuments() {
+  try {
+    const result = await db.collection("udemy").deleteMany({
+      expired: null,
     });
-  });
+
+    console.log(
+      `Deleted ${result.deletedCount} documents with null expired value.`
+    );
+    return result;
+  } catch (error) {
+    console.error("Error deleting documents with null expired value:", error);
+    throw error;
+  }
 }
 
 // Main function to run the deletion process
 async function main() {
   try {
-    console.log("Checking for rows with NULL expired value...");
-    await deleteNullExpiredRows();
+    await connectToMongoDB();
+    console.log("Checking for documents with null expired value...");
+    await deleteNullExpiredDocuments();
     console.log("Deletion process completed successfully.");
   } catch (error) {
-    console.error("Error during deletion process:", error.message);
-    process.exit(1); // Exit with a non-zero status code to indicate failure
+    console.error("Error during deletion process:", error);
+    process.exit(1);
   } finally {
-    db.end(); // Close the database connection
+    await client.close();
+    console.log("MongoDB connection closed");
   }
 }
 
